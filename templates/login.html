@@ -1,33 +1,44 @@
-{% extends 'bootstrap/base.html' %}
+{% include "header.html" %}
 {% import "bootstrap/wtf.html" as wtf %}
 
 {% block content %}
-{% include "header.html" %}
-
-  <!-- Page Header -->
-  <header class="masthead" style="background-image: url('https://images.unsplash.com/photo-1484100356142-db6ab6244067?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=80')">
-    <div class="overlay"></div>
-    <div class="container">
-      <div class="row">
-        <div class="col-lg-8 col-md-10 mx-auto">
-          <div class="page-heading">
-            <h1>Log In</h1>
-            <span class="subheading">Welcome Back!</span>
-          </div>
+<!-- Page Header-->
+<header class="masthead" style="background-image: url({{ url_for('static', filename='assets/img/cactus-bg.jpg') }})">
+    <div class="container position-relative px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+            <div class="col-md-10 col-lg-8 col-xl-7">
+                <div class="site-heading">
+                    <h1>
+                        Login
+                    </h1>
+                    <h2 class="subheading">
+                        Welcome Back.
+                    </h2>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </header>
+</header>
 
-  <div class="container">
-    <div class="row">
-
-      <div class="col-lg-8 col-md-10 mx-auto content">
-        {{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}
-      </div>
+<!-- Page Content-->
+<div class="container px-4 px-lg-5">
+    <div class="row gx-4 gx-lg-5 justify-content-center">
+        <div class="col-md-10 col-lg-8 col-xl-7">
+            <!-- Display flash message -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="{{ category }}">{{ message }}</div>
+              {% endfor %}
+            {% endif %}
+            {% endwith %}
+            <br> <br>
+            <!-- Login form -->
+            {{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}
+        </div>
     </div>
-  </div>
+</div>
 
+{% endblock %}
 
 {% include "footer.html" %}
-{% endblock %}

@@ -1,11 +1,11 @@
-from flask import Flask, render_template, request, url_for, redirect
+from flask import Flask, render_template, request, url_for, redirect, flash
 from flask_bootstrap import Bootstrap
 from flask_sqlalchemy import SQLAlchemy
 from flask_ckeditor import CKEditor
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
-from forms import CreatePostForm, RegisterForm
+from forms import CreatePostForm, RegisterForm, LoginForm
 import bleach
 
 # ----- Flask and Bootstrap ----- #
@@ -37,7 +37,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100))
     name = db.Column(db.String(100))
-db.create_all()
+# db.create_all()
 
 
 # ----- Strip URL of invalid tags ----- #
@@ -59,10 +59,50 @@ def strip_invalid_html(content):
 
 
 # ------ Login and Registration ----- #
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+@app.route('/login', methods=["GET", "POST"])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        email = form.email.data
+        password = form.password.data
+        user = User.query.filter_by(email=email).first()
+        # Email doesn't exist
+        if not user:
+            flash('Email does not exist, please try again.',
+                  'flash_msg_error')
+            return redirect(url_for('login'))
+        # Wrong password
+        elif not check_password_hash(user.password, password):
+            flash('Password incorrect, please try again.',
+                  'flash_msg_error')
+            return redirect(url_for('login'))
+        # Successful login
+        else:
+            login_user(user)
+            return redirect(url_for('home_page'))
+    return render_template("login.html", form=form, current_user=current_user)
+
+
 @app.route('/register', methods=["GET", "POST"])
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
+        # Email already exists
+        if User.query.filter_by(email=form.email.data).first():
+            flash('Email already exists. Login instead.',
+                  'flash_msg_error')
+            return redirect(url_for('login'))
+
+        # Generate password
         hash_and_salted_password = generate_password_hash(
             form.password.data,
             method='pbkdf2:sha256',
@@ -75,42 +115,41 @@ def register():
         )
         db.session.add(new_user)
         db.session.commit()
+
+        # Login user
+        login_user(new_user)
         return redirect(url_for("home_page"))
-    return render_template("register.html", form=form)
-
-
-@app.route('/login')
-def login():
-    return render_template("login.html")
+    return render_template("register.html", form=form, current_user=current_user)
 
 
 @app.route('/logout')
 def logout():
-    return redirect(url_for("home_page"))
+    logout_user()
+    return redirect(url_for('home_page'))
 
 
 # -------- Website Routes -------- #
 @app.route("/")
 def home_page():
     blog_posts = BlogPost.query.all()
-    return render_template("index.html", blog_posts=blog_posts)
+    return render_template("index.html", blog_posts=blog_posts, current_user=current_user)
 
 
 @app.route("/about")
 def about_page():
-    return render_template("about.html")
+    return render_template("about.html", current_user=current_user)
 
 
 @app.route("/contact", methods=["GET", "POST"])
 def contact_page():
     if request.method == 'GET':
-        return render_template("contact.html", contact_received=False)
+        return render_template("contact.html", contact_received=False, current_user=current_user)
     elif request.method == 'POST':
         contact_name = request.form['name']
         contact_email = request.form['email']
         contact_phone = request.form['phone']
         contact_message = request.form['message']
-        return render_template("contact.html", contact_received=True)
+        return render_template("contact.html", contact_received=True, current_user=current_user)
     else:
         return '<h1>Invalid request to contact_page (must be GET or POST)</h1>'
 
@@ -118,7 +157,7 @@ def contact_page():
 @app.route("/posts/<int:post_id>")
 def get_post(post_id):
     requested_post = BlogPost.query.get(post_id)
-    return render_template("post.html", post=requested_post)
+    return render_template("post.html", post=requested_post, current_user=current_user)
 
 
 @app.route("/new-post", methods=["GET", "POST"])
@@ -138,7 +177,7 @@ def add_new_post():
         db.session.add(new_post)
         db.session.commit()
         return redirect(url_for('home_page'))
-    return render_template("make-post.html", form=form)
+    return render_template("make-post.html", form=form, current_user=current_user)
 
 
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
@@ -161,7 +200,7 @@ def edit_post(post_id):
         post.body = strip_invalid_html(edit_form.body.data)
         db.session.commit()
         return redirect(url_for("get_post", post_id=post.id))
-    return render_template("make-post.html", form=edit_form, is_edit=True)
+    return render_template("make-post.html", form=edit_form, is_edit=True, current_user=current_user)
 
 
 @app.route("/delete/<int:post_id>")

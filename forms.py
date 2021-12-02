@@ -4,6 +4,12 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, URL
 
 
+class LoginForm(FlaskForm):
+    email = StringField("Email", validators=[DataRequired()])
+    password = PasswordField("Password", validators=[DataRequired()])
+    submit = SubmitField("Let Me In!")
+
+
 class RegisterForm(FlaskForm):
     email = StringField("Email", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
